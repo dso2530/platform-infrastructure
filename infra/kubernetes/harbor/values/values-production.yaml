@@ -1,0 +1,65 @@
+core:
+  replicas: 1
+database:
+  external:
+    coreDatabase: harbor
+    existingSecret: harbor-db
+    host: 192.168.1.40
+    port: "5432"
+    sslmode: disable
+    username: harbor
+  type: external
+expose:
+  nodePort:
+    name: harbor
+    ports:
+      http:
+        port: 30002
+      https:
+        port: 30003
+  tls:
+    enabled: false
+  type: nodePort
+externalURL: http://192.168.1.40:30002
+jobservice:
+  replicas: 1
+persistence:
+  enabled: false
+  imageChartStorage:
+    disableredirect: true
+    s3:
+      bucket: harbor-registry
+      existingSecret: harbor-registry-s3
+      region: us-east-1
+      regionendpoint: http://192.168.1.40:9000
+      secure: false
+      v4auth: true
+    type: s3
+  persistentVolumeClaim:
+    database:
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      storageClass: ""
+    jobservice:
+      jobLog:
+        accessMode: ReadWriteOnce
+        size: 1Gi
+        storageClass: ""
+    redis:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      storageClass: ""
+    registry:
+      accessMode: ReadWriteOnce
+      size: 20Gi
+      storageClass: ""
+    trivy:
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      storageClass: ""
+portal:
+  replicas: 1
+registry:
+  replicas: 1
+trivy:
+  enabled: true
