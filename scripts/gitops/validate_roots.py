@@ -221,6 +221,11 @@ def validate_root(path, expected):
 
 
 def main():
+    global validated
+
+    errors.clear()
+    validated = 0
+
     if not BOOTSTRAP_DIR.is_dir():
         print(
             "[ERREUR] Répertoire bootstrap manquant.",

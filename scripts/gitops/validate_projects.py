@@ -224,31 +224,43 @@ def validate_project(path):
     print(f"[OK] {relative_path}")
 
 
-if not PROJECTS_DIR.is_dir():
-    print(
-        f"[ERREUR] Répertoire absent : {PROJECTS_DIR}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+def main():
+    global validated
 
-project_files = sorted(PROJECTS_DIR.glob("*.yaml"))
+    # Réinitialisation pour permettre plusieurs exécutions dans les tests.
+    errors.clear()
+    validated = 0
 
-if not project_files:
-    print("[ERREUR] Aucun AppProject trouvé.", file=sys.stderr)
-    sys.exit(1)
+    if not PROJECTS_DIR.is_dir():
+        print(
+            f"[ERREUR] Répertoire absent : {PROJECTS_DIR}",
+            file=sys.stderr,
+        )
+        return 1
 
-for project_file in project_files:
-    validate_project(project_file)
+    project_files = sorted(PROJECTS_DIR.glob("*.yaml"))
 
-print()
-print(f"AppProjects contrôlés : {validated}")
+    if not project_files:
+        print("[ERREUR] Aucun AppProject trouvé.", file=sys.stderr)
+        return 1
 
-if errors:
-    print(f"Erreurs détectées : {len(errors)}", file=sys.stderr)
+    for project_file in project_files:
+        validate_project(project_file)
 
-    for message in errors:
-        print(f"[ERREUR] {message}", file=sys.stderr)
+    print()
+    print(f"AppProjects contrôlés : {validated}")
 
-    sys.exit(1)
+    if errors:
+        print(f"Erreurs détectées : {len(errors)}", file=sys.stderr)
 
-print("Validation des AppProjects réussie.")
+        for message in errors:
+            print(f"[ERREUR] {message}", file=sys.stderr)
+
+        return 1
+
+    print("Validation des AppProjects réussie.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

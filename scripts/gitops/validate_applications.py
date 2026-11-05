@@ -344,6 +344,13 @@ def validate_application(path):
 
 
 def main():
+    global validated
+
+    # Réinitialisation de l'état pour les exécutions successives.
+    errors.clear()
+    projects.clear()
+    validated = 0
+
     if not PROJECTS_DIR.is_dir() or not APPLICATIONS_DIR.is_dir():
         print(
             "[ERREUR] Répertoire GitOps manquant.",
