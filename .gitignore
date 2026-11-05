@@ -43,3 +43,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Python virtual environments
+.venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.pyo

@@ -1,0 +1,90 @@
+name: GitOps Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "gitops/**"
+      - "scripts/gitops/**"
+      - "schemas/**"
+      - ".github/workflows/gitops-validation.yml"
+      - "requirements.txt"
+
+  push:
+    branches:
+      - main
+    paths:
+      - "gitops/**"
+      - "scripts/gitops/**"
+      - "schemas/**"
+      - ".github/workflows/gitops-validation.yml"
+      - "requirements.txt"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitops-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate GitOps manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Install Kubeconform
+        env:
+          KUBECONFORM_VERSION: "0.8.0"
+        run: |
+          set -Eeuo pipefail
+
+          mkdir -p "$RUNNER_TEMP/bin"
+
+          curl -fsSL \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            -o "$RUNNER_TEMP/kubeconform.tar.gz"
+
+          tar -xzf "$RUNNER_TEMP/kubeconform.tar.gz" \
+            -C "$RUNNER_TEMP" kubeconform
+
+          install "$RUNNER_TEMP/kubeconform" \
+            "$RUNNER_TEMP/bin/kubeconform"
+
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+          "$RUNNER_TEMP/bin/kubeconform" -v
+
+      - name: Validate YAML syntax
+        run: python scripts/gitops/validate_yaml.py
+
+      - name: Validate AppProjects
+        run: python scripts/gitops/validate_projects.py
+
+      - name: Validate Applications
+        run: python scripts/gitops/validate_applications.py
+
+      - name: Validate root Applications
+        run: python scripts/gitops/validate_roots.py
+
+      - name: Validate ArgoCD schemas
+        run: scripts/gitops/validate_schemas.sh
