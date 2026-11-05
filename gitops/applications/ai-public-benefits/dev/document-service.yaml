@@ -21,10 +21,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: public-benefits
   syncPolicy:
-    #automated:
-      #prune: true
-      #selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      #- PruneLast=true
+      - PruneLast=true
   revisionHistoryLimit: 5
