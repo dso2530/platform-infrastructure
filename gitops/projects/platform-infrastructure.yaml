@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform-infrastructure
+  namespace: argocd
+spec:
+  description: Central GitOps governance for platform infrastructure
+
+  sourceRepos:
+    - https://github.com/dso2530/platform-infrastructure.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application

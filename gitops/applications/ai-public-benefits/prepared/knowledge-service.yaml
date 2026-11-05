@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: knowledge-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ai-public-benefits-platform
+    app.kubernetes.io/component: microservice
+spec:
+  project: public-benefits
+  source:
+    repoURL: https://github.com/dso2530/ai-public-benefits-platform.git
+    targetRevision: main
+    path: deployment/helm/microservice
+    helm:
+      releaseName: knowledge-service
+      valueFiles:
+        - values/dev/common.yaml
+        - values/dev/knowledge-service.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: public-benefits
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+  revisionHistoryLimit: 5

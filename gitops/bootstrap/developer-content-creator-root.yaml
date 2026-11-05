@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: developer-content-creator-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: developer-content-creator
+    app.kubernetes.io/component: root-application
+spec:
+  project: platform-infrastructure
+  source:
+    repoURL: https://github.com/dso2530/platform-infrastructure.git
+    targetRevision: main
+    path: gitops/applications/developer-content-creator/dev
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd

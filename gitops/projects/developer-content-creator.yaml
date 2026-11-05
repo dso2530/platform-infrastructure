@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: developer-content-creator
+  namespace: argocd
+spec:
+  description: Developer Content Creator Platform
+
+  sourceRepos:
+    - https://github.com/dso2530/developer-content-creator.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: developer-content-creator
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
