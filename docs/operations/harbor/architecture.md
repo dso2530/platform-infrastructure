@@ -1,13 +1,13 @@
 # Harbor — Architecture technique
 
-**Projet :** Platform Infrastructure  
-**Date :** 4 novembre 2026  
-**Statut :** Architecture documentée — haute disponibilité et PRA complet à valider  
-**Environnement de référence :** Kubernetes / k0s local  
-**Namespace :** `harbor`  
-**Chart Helm :** `harbor-1.19.4`  
-**Version Harbor :** `2.15.4`  
-**Révision Helm :** `3`
+- **Projet :** Platform Infrastructure
+- **Date :** 5 novembre 2026
+- **Statut :** Architecture documentée — haute disponibilité et PRA complet à valider
+- **Environnement de référence :** Kubernetes / k0s local
+- **Namespace :** `harbor`
+- **Chart Helm :** `harbor-1.19.4`
+- **Version Harbor :** `2.15.4`
+- **Révision Helm actuelle :** `3`
 
 ---
 
@@ -45,7 +45,7 @@ L'architecture couvre :
 - Kubernetes, Helm et ArgoCD ;
 - les mécanismes de sauvegarde, restauration et supervision.
 
-Les applications clientes, notamment `developer-content-creator` et `ai-public-benefits-platform`, sont considérées comme des consommateurs du service.
+Les applications clientes, notamment `developer-content-creator` et `ai-public-benefits-platform`, sont considérées comme des consommatrices du service.
 
 ---
 
@@ -76,7 +76,11 @@ flowchart TB
         end
 
         ESO["External Secrets Operator"]
-        KSECRET["Kubernetes Secrets"]
+        STORE["ClusterSecretStore<br/>vault-harbor"]
+        ES_DB["ExternalSecret<br/>harbor-db"]
+        ES_S3["ExternalSecret<br/>harbor-registry-s3"]
+        SECRET_DB["Secret Kubernetes<br/>harbor-db"]
+        SECRET_S3["Secret Kubernetes<br/>harbor-registry-s3"]
         ARGO["ArgoCD"]
     end
 
@@ -85,7 +89,7 @@ flowchart TB
         MINIO[("MinIO - S3")]
     end
 
-    VAULT["Vault"]
+    VAULT["Vault KV v2<br/>secret/infrastructures/harbor"]
     GIT["Git - platform-infrastructure"]
 
     DCC --> CORE
@@ -96,18 +100,25 @@ flowchart TB
     CORE --> REDIS
     JOB --> REDIS
     REGISTRY --> MINIO
-    TRIVY --> MINIO
 
-    VAULT -. "Intégration Harbor à finaliser" .-> ESO
-    ESO --> KSECRET
-    KSECRET --> CORE
-    KSECRET --> REGISTRY
+    VAULT -->|"Lecture des secrets"| ESO
+    STORE -. "Configuration d'accès Vault" .-> ESO
+    ESO --> ES_DB
+    ESO --> ES_S3
+    ES_DB --> SECRET_DB
+    ES_S3 --> SECRET_S3
+    SECRET_DB --> CORE
+    SECRET_S3 --> REGISTRY
 
-    GIT -. "Intégration Harbor à finaliser" .-> ARGO
-    ARGO --> HARBOR
+    GIT -. "Configuration GitOps cible" .-> ARGO
+    ARGO -. "Réconciliation à mettre en place" .-> HARBOR
 ```
 
-**Remarque :** le diagramme présente les relations logiques. Il ne représente pas l'ensemble des flux internes entre les composants Harbor. Les intégrations Vault / External Secrets Operator et ArgoCD propres à Harbor restent à finaliser et à valider.
+**Remarque :** le diagramme présente les relations logiques et non l'ensemble des flux internes entre les composants Harbor.
+
+L'intégration Vault / External Secrets Operator dédiée à Harbor est opérationnelle. Le `ClusterSecretStore` `vault-harbor` permet à ESO de lire les secrets dans Vault KV v2 et de synchroniser les ressources Kubernetes correspondantes.
+
+L'intégration GitOps de Harbor avec ArgoCD reste à finaliser et à valider. Les relations Git / ArgoCD / Harbor représentées en pointillés correspondent donc à l'architecture cible et non à un déploiement GitOps déjà opérationnel.
 
 ### 2.2 Frontières de déploiement
 
@@ -285,22 +296,26 @@ Vault constitue la source centralisée des secrets d'infrastructure.
 
 External Secrets Operator est utilisé sur la plateforme pour synchroniser les secrets vers Kubernetes.
 
-Le flux cible est :
+Le flux est le suivant :
 
 ```text
-Vault
-  |
-  v
+Vault KV v2
+    |
+    v
+ClusterSecretStore (vault-harbor)
+    |
+    v
 External Secrets Operator
-  |
-  v
-ExternalSecret
-  |
-  v
-Kubernetes Secret
-  |
-  v
-Harbor
+    |
+    +--> ExternalSecret harbor-db
+    |       |
+    |       v
+    |    Secret harbor-db
+    |
+    +--> ExternalSecret harbor-registry-s3
+            |
+            v
+         Secret harbor-registry-s3
 ```
 
 Les références actuellement utilisées par Harbor sont :
@@ -310,7 +325,21 @@ Les références actuellement utilisées par Harbor sont :
 | `harbor-db` | Connexion PostgreSQL |
 | `harbor-registry-s3` | Authentification S3 / MinIO |
 
-**État de l'intégration :** les références aux Secrets Kubernetes sont présentes dans la configuration Helm. L'intégration ExternalSecret propre à Harbor doit encore être finalisée et validée.
+**État de l'intégration :** l'intégration Vault / External Secrets Operator propre à Harbor est opérationnelle.
+
+Les ressources dédiées sont :
+
+- `ClusterSecretStore` : `vault-harbor` ;
+- rôle Vault : `harbor-role` ;
+- ServiceAccount : `harbor-vault-auth`, dans le namespace `external-secrets` ;
+- ExternalSecret PostgreSQL : `harbor-db` ;
+- ExternalSecret stockage S3 : `harbor-registry-s3`.
+
+Les credentials S3 sont stockés dans Vault KV v2, sous le chemin logique `infrastructures/harbor/registry-s3`. ESO les synchronise vers le Secret Kubernetes `harbor-registry-s3`, consommé par Harbor Registry.
+
+Le mot de passe PostgreSQL est géré séparément dans Vault et synchronisé vers le Secret `harbor-db`.
+
+La synchronisation après la rotation manuelle du 5 novembre 2026 a été vérifiée.
 
 Les règles suivantes s'appliquent :
 
@@ -319,6 +348,24 @@ Les règles suivantes s'appliquent :
 - les permissions MinIO doivent être limitées au bucket Harbor ;
 - les identifiants doivent pouvoir être renouvelés ;
 - les secrets doivent être synchronisés selon le mécanisme retenu pour l'environnement.
+
+#### Rotation des credentials S3
+
+La première rotation manuelle a suivi les étapes suivantes :
+
+1. Création d'un nouveau service account MinIO, sans révoquer immédiatement l'ancien.
+2. Enregistrement des nouveaux credentials dans Vault KV v2.
+3. Synchronisation du Secret Kubernetes par ESO.
+4. Vérification de la synchronisation et des références aux credentials.
+5. Redémarrage contrôlé de Harbor Registry.
+6. Vérification fonctionnelle de l'authentification, du push et de la récupération de l'image avec le nouveau compte.
+7. Révocation de l'ancien service account après validation.
+8. Réalisation d'un pull à froid depuis un client Docker indépendant, sans image préalablement présente dans son cache local.
+9. Comparaison du digest obtenu avec celui de l'image initiale.
+
+La rotation manuelle et les tests fonctionnels sont validés. Le pull à froid indépendant réalisé après révocation confirme la lecture effective des blobs depuis MinIO avec le nouveau compte.
+
+La procédure détaillée et les résultats sont disponibles dans `credential-rotation.md`.
 
 ### 5.2 Sécurité réseau
 
@@ -604,6 +651,7 @@ La supervision complète et les alertes spécifiques à Harbor restent à formal
 | `restore.md` | Procédure de restauration |
 | `rollback.md` | Procédure de retour arrière |
 | `troubleshooting.md` | Diagnostic des incidents |
+| `credential-rotation.md` | Procédure de rotation des credentials S3 MinIO |
 
 ---
 
@@ -618,9 +666,16 @@ La supervision complète et les alertes spécifiques à Harbor restent à formal
 | MinIO externe | Opérationnel |
 | Stockage S3 du Registry | Migration validée |
 | Isolation du bucket Harbor | Validée |
-| Push et pull des images | Validés |
+| Authentification Harbor | Validée |
+| Push d'image après rotation S3 | Validé |
+| Récupération de l'image depuis un client indépendant | Validée |
+| Pull à froid sans cache local | Validé |
+| Vérification du digest après récupération | Identique au digest initial |
 | Persistance après redémarrage Registry | Validée |
-| Gestion des secrets par Vault / External Secrets | À finaliser pour Harbor |
+| Rotation manuelle des credentials S3 | Réalisée le 5 novembre 2026 |
+| Révocation de l'ancien compte MinIO | Validée |
+| Synchronisation Vault / ESO après rotation | Validée |
+| Gestion des secrets par Vault / External Secrets | Opérationnelle pour Harbor |
 | Déploiement GitOps Harbor | À finaliser |
 | Supervision complète | À formaliser |
 | Sauvegarde PostgreSQL | Réalisée |
@@ -630,4 +685,12 @@ La supervision complète et les alertes spécifiques à Harbor restent à formal
 | Restauration coordonnée | À valider |
 | Haute disponibilité | Non démontrée |
 
-**Conclusion :** Harbor constitue un service partagé de la plateforme d'infrastructure. Les composants applicatifs, Redis et Trivy sont déployés dans Kubernetes, tandis que PostgreSQL et MinIO sont hébergés hors du cluster. Le stockage objet du Registry repose sur MinIO et les tests de sauvegarde et de restauration isolés ont été réalisés. La prochaine étape majeure consiste à valider un scénario de restauration coordonnée et à finaliser les intégrations GitOps et External Secrets propres à Harbor.
+### Conclusion
+
+Harbor constitue un service partagé de la plateforme d'infrastructure. Les composants applicatifs, Redis et Trivy sont déployés dans Kubernetes, tandis que PostgreSQL et MinIO sont hébergés hors du cluster.
+
+Le stockage objet du Registry repose sur MinIO. L'intégration Vault / External Secrets Operator est opérationnelle et une première rotation manuelle des credentials S3 a été réalisée le 5 novembre 2026. L'ancien compte MinIO a été révoqué après les tests fonctionnels.
+
+La récupération à froid a été validée depuis un client Docker indépendant du serveur Harbor. L'image était absente du cache local du client ; le téléchargement a abouti et le digest obtenu est identique au digest initial. Ce test confirme la lecture effective des blobs depuis le stockage MinIO après rotation des credentials.
+
+Les tests de sauvegarde et de restauration isolés ont été réalisés. Les prochaines étapes majeures sont la validation d'une restauration coordonnée, l'industrialisation de la rotation S3 et la finalisation de l'intégration GitOps Harbor avec ArgoCD.

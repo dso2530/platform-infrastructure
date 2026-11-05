@@ -7,7 +7,7 @@
 **Chart Helm :** `harbor-1.19.4`  
 **Version Harbor :** `2.15.4`  
 **Révision Helm actuelle :** `3`  
-**Statut :** Service opérationnel — PRA partiellement validé
+**Statut :** Service opérationnel — intégration Vault/ESO validée — rotation MinIO validée — PRA partiellement validé
 
 ---
 
@@ -95,6 +95,7 @@ Pour plus de détails : `architecture.md`.
 | `restore.md` | Restauration PostgreSQL, MinIO et Harbor | Tests isolés réalisés ; PRA complet non validé |
 | `rollback.md` | Retour arrière et protection du stockage | Procédure documentée |
 | `troubleshooting.md` | Diagnostic des incidents Harbor | Guide documenté ; procédures à valider en conditions opérationnelles |
+| `credential-rotation.md` | Rotation des credentials S3 MinIO utilisés par Harbor | Première rotation manuelle validée ; automatisation à industrialiser |
 
 ## 4. Informations d'exploitation
 
@@ -211,7 +212,29 @@ Les principes de sécurité sont les suivants :
 
 Les fichiers Helm versionnés ne doivent contenir que des paramètres non sensibles et des références aux Secrets Kubernetes.
 
-**État de l'intégration des secrets :** les références `harbor-db` et `harbor-registry-s3` sont présentes dans la configuration Helm. L'intégration ExternalSecret propre à Harbor doit encore être finalisée et validée.
+**État de l'intégration des secrets :** l'intégration Vault / External Secrets Operator est opérationnelle.
+
+Deux ExternalSecrets dédiés assurent la synchronisation des credentials :
+
+- `harbor-db` : mot de passe PostgreSQL ;
+- `harbor-registry-s3` : identifiants S3 de MinIO.
+
+Le ClusterSecretStore `vault-harbor` utilise un rôle Vault dédié à Harbor. Les credentials S3 sont stockés dans Vault KV v2 et synchronisés vers Kubernetes.
+
+La synchronisation de `harbor-registry-s3` a été vérifiée après la rotation manuelle du 5 novembre 2026.
+
+**État de la rotation MinIO :** la première rotation manuelle a été réalisée avec succès. Le nouveau compte technique est utilisé par Harbor et l'ancien compte a été révoqué après validation.
+
+Un test complémentaire depuis un client Docker indépendant a confirmé :
+
+- l'absence préalable de l'image dans le cache local ;
+- la réussite de l'authentification Harbor ;
+- le téléchargement à froid des couches ;
+- l'identité du digest avec celui du test initial.
+
+La lecture des blobs depuis le stockage objet MinIO est ainsi validée.
+
+Voir `credential-rotation.md` pour la procédure et les résultats détaillés.
 
 ## 6. Déploiement et configuration Helm
 
@@ -361,20 +384,30 @@ La procédure détaillée est disponible dans `rollback.md`.
 | Trivy dans Kubernetes | Opérationnel |
 | Stockage des blobs dans MinIO | Opérationnel |
 | Isolation du bucket Harbor | Validée |
-| Push et pull des images | Validés |
+| Authentification Harbor | Validée |
+| Push d'image après rotation S3 | Validé |
+| Récupération du manifeste après rotation | Validée |
+| Lecture des blobs depuis MinIO à froid | Validée depuis un client indépendant |
+| Authentification depuis un client indépendant | Validée |
+| Comparaison du digest après pull à froid | Identique au test initial |
+| Rotation manuelle des credentials S3 | Validée le 5 novembre 2026 |
+| Révocation de l'ancien compte MinIO | Validée |
+| Synchronisation Vault / ESO après rotation | Validée |
+| Intégration ExternalSecret Harbor | Opérationnelle |
 | Persistance après redémarrage Registry | Validée |
 | Sauvegarde PostgreSQL | Réalisée |
 | Sauvegarde MinIO | Réalisée |
 | Restauration PostgreSQL isolée | Testée |
 | Restauration MinIO isolée | Testée |
 | Restauration complète coordonnée | À valider |
-| Intégration ExternalSecret Harbor | À finaliser |
 | Sauvegardes automatisées | À faire |
 | Supervision complète | À formaliser |
 | Rollback applicatif compatible S3 | Procédure documentée, test à réaliser |
 | Intégration Harbor dans GitOps | À finaliser |
 
-Harbor est opérationnel pour les usages courants. En revanche, la capacité de reprise après sinistre complète ne doit pas être considérée comme validée tant que la restauration coordonnée n'a pas été testée.
+Harbor est opérationnel pour les usages courants. La lecture du stockage objet a été validée après rotation des credentials, y compris depuis un client indépendant.
+
+En revanche, la capacité de reprise après sinistre complète ne doit pas être considérée comme validée tant que la restauration coordonnée n'a pas été testée.
 
 ## 10. Travaux prioritaires
 
@@ -382,12 +415,11 @@ Harbor est opérationnel pour les usages courants. En revanche, la capacité de 
 2. Définir une stratégie de rétention.
 3. Mettre en place des tests périodiques de restauration.
 4. Valider une restauration coordonnée PostgreSQL / MinIO.
-5. Finaliser l'intégration ExternalSecret Harbor.
-6. Formaliser la rotation des identifiants S3.
-7. Mettre en place les alertes de capacité et de disponibilité.
-8. Intégrer la configuration Helm de référence dans le workflow GitOps.
-9. Renforcer la supervision des composants Harbor.
-10. Tester un rollback applicatif compatible avec le backend S3.
+5. Industrialiser la rotation périodique des identifiants S3 (CronJob Kubernetes).
+6. Mettre en place les alertes de capacité et de disponibilité.
+7. Intégrer la configuration Helm de référence dans le workflow GitOps.
+8. Renforcer la supervision des composants Harbor.
+9. Tester un rollback applicatif compatible avec le backend S3.
 
 ## 11. Relations avec les autres dépôts
 
@@ -402,4 +434,4 @@ Harbor est opérationnel pour les usages courants. En revanche, la capacité de 
 
 ---
 
-*Dernière mise à jour : 4 novembre 2026.*
+*Dernière mise à jour : 5 novembre 2026.*
