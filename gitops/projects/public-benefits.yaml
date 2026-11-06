@@ -8,6 +8,7 @@ spec:
 
   sourceRepos:
     - https://github.com/dso2530/ai-public-benefits-platform.git
+    - https://github.com/dso2530/platform-infrastructure.git
     - https://charts.external-secrets.io
 
   destinations:

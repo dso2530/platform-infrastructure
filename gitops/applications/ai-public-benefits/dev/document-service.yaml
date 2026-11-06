@@ -6,22 +6,33 @@ metadata:
   labels:
     app.kubernetes.io/part-of: ai-public-benefits-platform
     app.kubernetes.io/component: microservice
+
 spec:
   project: public-benefits
-  source:
-    repoURL: https://github.com/dso2530/ai-public-benefits-platform.git
-    targetRevision: main
-    path: deployment/helm/microservice
-    helm:
-      releaseName: document-service
-      valueFiles:
-        - values/dev/common.yaml
-        - values/dev/document-service.yaml
+
+  sources:
+    # Source principale : chart Helm générique
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
+      path: helm/charts/spring-boot-microservice
+      helm:
+        releaseName: document-service
+        valueFiles:
+          - $values/helm/environments/dev/common.yaml
+          - $values/helm/environments/dev/document-service.yaml
+
+    # Source secondaire : fichiers de valeurs Helm
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
+      ref: values
+
   destination:
     server: https://kubernetes.default.svc
     namespace: public-benefits
+
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
       - PruneLast=true
+
   revisionHistoryLimit: 5
