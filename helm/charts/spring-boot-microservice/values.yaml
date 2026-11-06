@@ -28,7 +28,8 @@ podSecurityContext:
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
-    drop: [ALL]
+    drop:
+      - ALL
   readOnlyRootFilesystem: true
 
 container:
@@ -75,6 +76,7 @@ probes:
     timeoutSeconds: 2
     failureThreshold: 30
     successThreshold: 1
+
   liveness:
     enabled: true
     path: /actuator/health/liveness
@@ -84,6 +86,7 @@ probes:
     timeoutSeconds: 2
     failureThreshold: 3
     successThreshold: 1
+
   readiness:
     enabled: true
     path: /actuator/health/readiness
@@ -108,12 +111,18 @@ affinity: {}
 
 podAntiAffinity:
   enabled: false
+  type: preferred
+  topologyKey: kubernetes.io/hostname
+  weight: 100
 
 # Spring Boot/Kafka services can expose a graceful shutdown endpoint through the JVM.
 lifecycle:
   preStop:
     enabled: false
-    command: ["/bin/sh", "-c", "sleep 10"]
+    command:
+      - /bin/sh
+      - -c
+      - sleep 10
 
 # Optional HTTP ingress. Prefer the BFF as the externally exposed application.
 ingress:
@@ -133,8 +142,13 @@ autoscaling:
 
 podDisruptionBudget:
   enabled: false
-  minAvailable: 1
 
+  # Choose either minAvailable or maxUnavailable.
+  minAvailable: 1
+  maxUnavailable: null
+
+# When enabled, ingress and egress are both isolated.
+# Empty rules deny all traffic in the corresponding direction.
 networkPolicy:
   enabled: false
   ingress: []
@@ -150,9 +164,11 @@ serviceMonitor:
 extraVolumes:
   - name: tmp
     emptyDir: {}
+
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
+
 extraContainers: []
 
 # External Secrets Operator

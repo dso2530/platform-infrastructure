@@ -53,3 +53,4 @@ __pycache__/
 *.pyo
 # Helm templates are Kubernetes manifests, not secret values
 !helm/charts/spring-boot-microservice/templates/external-secret.yaml
+!.kubeconform/ExternalSecret-external-secrets.io-v1.json
