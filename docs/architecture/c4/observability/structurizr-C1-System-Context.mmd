@@ -1,0 +1,19 @@
+graph LR
+  linkStyle default fill:#ffffff
+
+  subgraph diagram ["System Context View: Centralized Observability Platform"]
+    style diagram fill:#ffffff,stroke:#ffffff
+
+    1["<div style='font-weight: bold'>Équipe DevOps / SRE</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Administre les plateformes,<br />supervise les services et<br />exploite les données<br />d'observabilité.</div>"]
+    style 1 fill:#08427b,stroke:#052e56,color:#ffffff
+    2["<div style='font-weight: bold'>AI Public Benefits Platform</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Plateforme de services<br />publics numériques composée<br />de microservices Spring Boot<br />et de composants<br />d'infrastructure.</div>"]
+    style 2 fill:#1168bd,stroke:#0b4884,color:#ffffff
+    3["<div style='font-weight: bold'>Centralized Observability Platform</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Collecte, centralise, stocke<br />et permet d'explorer les<br />métriques, logs et traces des<br />environnements.</div>"]
+    style 3 fill:#438dd5,stroke:#2e6295,color:#ffffff
+
+    3-. "<div>Scrape les endpoints de<br />métriques</div><div style='font-size: 70%'></div>" .->2
+    2-. "<div>Expose les logs à l'agent de<br />collecte</div><div style='font-size: 70%'></div>" .->3
+    2-. "<div>Exporte les traces<br />distribuées via OTLP</div><div style='font-size: 70%'></div>" .->3
+    1-. "<div>Consulte les tableaux de bord</div><div style='font-size: 70%'></div>" .->3
+
+  end

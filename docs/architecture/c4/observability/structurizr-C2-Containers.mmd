@@ -1,0 +1,42 @@
+graph LR
+  linkStyle default fill:#ffffff
+
+  subgraph diagram ["Container View: Centralized Observability Platform"]
+    style diagram fill:#ffffff,stroke:#ffffff
+
+    1["<div style='font-weight: bold'>Équipe DevOps / SRE</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Administre les plateformes,<br />supervise les services et<br />exploite les données<br />d'observabilité.</div>"]
+    style 1 fill:#08427b,stroke:#052e56,color:#ffffff
+    2["<div style='font-weight: bold'>AI Public Benefits Platform</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Plateforme de services<br />publics numériques composée<br />de microservices Spring Boot<br />et de composants<br />d'infrastructure.</div>"]
+    style 2 fill:#1168bd,stroke:#0b4884,color:#ffffff
+
+    subgraph 3 ["Centralized Observability Platform"]
+      style 3 fill:#ffffff,stroke:#2e6295,color:#2e6295
+
+      4["<div style='font-weight: bold'>Prometheus</div><div style='font-size: 70%; margin-top: 0px'>[Container: Prometheus]</div><div style='font-size: 80%; margin-top:10px'>Collecte les métriques par<br />scraping des endpoints<br />exposés par les applications<br />et les infrastructures.</div>"]
+      style 4 fill:#1d6f42,stroke:#144d2e,color:#ffffff
+      5["<div style='font-weight: bold'>Grafana</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana]</div><div style='font-size: 80%; margin-top:10px'>Fournit les tableaux de bord<br />et les interfaces<br />d'exploration des données<br />d'observabilité.</div>"]
+      style 5 fill:#6b4c9a,stroke:#4a356b,color:#ffffff
+      6["<div style='font-weight: bold'>Loki</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana Loki]</div><div style='font-size: 80%; margin-top:10px'>Centralise et stocke les logs<br />des applications et des<br />infrastructures.</div>"]
+      style 6 fill:#a65e18,stroke:#744110,color:#ffffff
+      7["<div style='font-weight: bold'>Grafana Alloy</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana Alloy]</div><div style='font-size: 80%; margin-top:10px'>Agent de collecte déployé au<br />plus près des sources<br />applicatives. Collecte les<br />logs et les transmet au Loki<br />central de son environnement.</div>"]
+      style 7 fill:#a65e18,stroke:#744110,color:#ffffff
+      8["<div style='font-weight: bold'>OpenTelemetry Collector</div><div style='font-size: 70%; margin-top: 0px'>[Container: OpenTelemetry Collector]</div><div style='font-size: 80%; margin-top:10px'>Reçoit, traite et exporte les<br />données de télémétrie,<br />notamment les traces OTLP.</div>"]
+      style 8 fill:#147d80,stroke:#0e5759,color:#ffffff
+      9["<div style='font-weight: bold'>Jaeger</div><div style='font-size: 70%; margin-top: 0px'>[Container: Jaeger]</div><div style='font-size: 80%; margin-top:10px'>Stocke et permet d'explorer<br />les traces distribuées.</div>"]
+      style 9 fill:#7a4e9b,stroke:#55366c,color:#ffffff
+    end
+
+    4-. "<div>Scrape les endpoints de<br />métriques</div><div style='font-size: 70%'></div>" .->2
+    2-. "<div>Expose les logs à l'agent de<br />collecte</div><div style='font-size: 70%'></div>" .->7
+    2-. "<div>Exporte les traces via OTLP</div><div style='font-size: 70%'></div>" .->8
+    7-. "<div>Transmet les logs collectés</div><div style='font-size: 70%'></div>" .->6
+    8-. "<div>Exporte les traces</div><div style='font-size: 70%'></div>" .->9
+    5-. "<div>Interroge les métriques</div><div style='font-size: 70%'></div>" .->4
+    5-. "<div>Interroge les logs</div><div style='font-size: 70%'></div>" .->6
+    5-. "<div>Explore les traces</div><div style='font-size: 70%'></div>" .->9
+    1-. "<div>Consulte les tableaux de bord</div><div style='font-size: 70%'></div>" .->5
+    1-. "<div>Consulte les métriques et les<br />alertes</div><div style='font-size: 70%'></div>" .->4
+    1-. "<div>Explore les logs</div><div style='font-size: 70%'></div>" .->6
+    1-. "<div>Analyse les traces<br />distribuées</div><div style='font-size: 70%'></div>" .->9
+
+  end

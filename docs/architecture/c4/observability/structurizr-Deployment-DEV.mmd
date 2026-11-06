@@ -1,0 +1,63 @@
+graph LR
+  linkStyle default fill:#ffffff
+
+  subgraph diagram ["Deployment View: Centralized Observability Platform - DEV"]
+    style diagram fill:#ffffff,stroke:#ffffff
+
+    subgraph 26 ["Infrastructures applicatives DEV"]
+      style 26 fill:#ffffff,stroke:#444444,color:#444444
+
+      subgraph 27 ["Cluster k0s"]
+        style 27 fill:#ffffff,stroke:#444444,color:#444444
+
+        28["<div style='font-weight: bold'>AI Public Benefits Platform</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Plateforme de services<br />publics numériques composée<br />de microservices Spring Boot<br />et de composants<br />d'infrastructure.</div>"]
+        style 28 fill:#1168bd,stroke:#0b4884,color:#ffffff
+        29["<div style='font-weight: bold'>Grafana Alloy</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana Alloy]</div><div style='font-size: 80%; margin-top:10px'>Agent de collecte déployé au<br />plus près des sources<br />applicatives. Collecte les<br />logs et les transmet au Loki<br />central de son environnement.</div>"]
+        style 29 fill:#a65e18,stroke:#744110,color:#ffffff
+      end
+
+      subgraph 31 ["Cluster Floci/GKE"]
+        style 31 fill:#ffffff,stroke:#444444,color:#444444
+
+        32["<div style='font-weight: bold'>AI Public Benefits Platform</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Plateforme de services<br />publics numériques composée<br />de microservices Spring Boot<br />et de composants<br />d'infrastructure.</div>"]
+        style 32 fill:#1168bd,stroke:#0b4884,color:#ffffff
+        33["<div style='font-weight: bold'>Grafana Alloy</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana Alloy]</div><div style='font-size: 80%; margin-top:10px'>Agent de collecte déployé au<br />plus près des sources<br />applicatives. Collecte les<br />logs et les transmet au Loki<br />central de son environnement.</div>"]
+        style 33 fill:#a65e18,stroke:#744110,color:#ffffff
+      end
+
+    end
+
+    subgraph 35 ["Ubuntu host 192.168.1.40"]
+      style 35 fill:#ffffff,stroke:#444444,color:#444444
+
+      subgraph 36 ["Podman / Compose"]
+        style 36 fill:#ffffff,stroke:#444444,color:#444444
+
+        37["<div style='font-weight: bold'>Prometheus</div><div style='font-size: 70%; margin-top: 0px'>[Container: Prometheus]</div><div style='font-size: 80%; margin-top:10px'>Collecte les métriques par<br />scraping des endpoints<br />exposés par les applications<br />et les infrastructures.</div>"]
+        style 37 fill:#1d6f42,stroke:#144d2e,color:#ffffff
+        40["<div style='font-weight: bold'>Grafana</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana]</div><div style='font-size: 80%; margin-top:10px'>Fournit les tableaux de bord<br />et les interfaces<br />d'exploration des données<br />d'observabilité.</div>"]
+        style 40 fill:#6b4c9a,stroke:#4a356b,color:#ffffff
+        42["<div style='font-weight: bold'>Loki</div><div style='font-size: 70%; margin-top: 0px'>[Container: Grafana Loki]</div><div style='font-size: 80%; margin-top:10px'>Centralise et stocke les logs<br />des applications et des<br />infrastructures.</div>"]
+        style 42 fill:#a65e18,stroke:#744110,color:#ffffff
+        46["<div style='font-weight: bold'>OpenTelemetry Collector</div><div style='font-size: 70%; margin-top: 0px'>[Container: OpenTelemetry Collector]</div><div style='font-size: 80%; margin-top:10px'>Reçoit, traite et exporte les<br />données de télémétrie,<br />notamment les traces OTLP.</div>"]
+        style 46 fill:#147d80,stroke:#0e5759,color:#ffffff
+        49["<div style='font-weight: bold'>Jaeger</div><div style='font-size: 70%; margin-top: 0px'>[Container: Jaeger]</div><div style='font-size: 80%; margin-top:10px'>Stocke et permet d'explorer<br />les traces distribuées.</div>"]
+        style 49 fill:#7a4e9b,stroke:#55366c,color:#ffffff
+      end
+
+    end
+
+    28-. "<div>Expose les logs à l'agent de<br />collecte</div><div style='font-size: 70%'></div>" .->29
+    32-. "<div>Expose les logs à l'agent de<br />collecte</div><div style='font-size: 70%'></div>" .->33
+    37-. "<div>Scrape les endpoints de<br />métriques</div><div style='font-size: 70%'></div>" .->28
+    37-. "<div>Scrape les endpoints de<br />métriques</div><div style='font-size: 70%'></div>" .->32
+    40-. "<div>Interroge les métriques</div><div style='font-size: 70%'></div>" .->37
+    29-. "<div>Transmet les logs collectés</div><div style='font-size: 70%'></div>" .->42
+    33-. "<div>Transmet les logs collectés</div><div style='font-size: 70%'></div>" .->42
+    40-. "<div>Interroge les logs</div><div style='font-size: 70%'></div>" .->42
+    28-. "<div>Exporte les traces via OTLP</div><div style='font-size: 70%'></div>" .->46
+    32-. "<div>Exporte les traces via OTLP</div><div style='font-size: 70%'></div>" .->46
+    40-. "<div>Explore les traces</div><div style='font-size: 70%'></div>" .->49
+    46-. "<div>Exporte les traces</div><div style='font-size: 70%'></div>" .->49
+
+  end

@@ -1,0 +1,214 @@
+name: Structurizr Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "architecture/structurizr/observability/**"
+      - "docs/architecture/c4/observability/**"
+      - ".github/workflows/structurizr-validation.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "architecture/structurizr/observability/**"
+      - "docs/architecture/c4/observability/**"
+      - ".github/workflows/structurizr-validation.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structurizr-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Structurizr architecture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    env:
+      STRUCTURIZR_IMAGE: structurizr/structurizr:2026.10.26
+      WORKSPACE_DIR: architecture/structurizr/observability
+      DIAGRAMS_DIR: docs/architecture/c4/observability
+
+    steps:
+      - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Display Structurizr version
+        id: version
+        run: |
+          set -Eeuo pipefail
+
+          docker image pull "$STRUCTURIZR_IMAGE"
+          docker image inspect "$STRUCTURIZR_IMAGE" \
+            --format '{{.RepoTags}}'
+
+      - name: Validate Structurizr DSL
+        id: validate_dsl
+        run: |
+          set -Eeuo pipefail
+
+          docker run --rm \
+            -v "$PWD/$WORKSPACE_DIR:/usr/local/structurizr:ro" \
+            "$STRUCTURIZR_IMAGE" \
+            validate \
+            -workspace /usr/local/structurizr/workspace.dsl
+
+      - name: Check versioned diagrams
+        id: check_diagrams
+        run: |
+          set -Eeuo pipefail
+
+          diagrams=(
+            structurizr-C1-System-Context.mmd
+            structurizr-C2-Containers.mmd
+            structurizr-Deployment-DEV.mmd
+            structurizr-Deployment-STAGING.mmd
+            structurizr-Deployment-PROD.mmd
+          )
+
+          for diagram in "${diagrams[@]}"; do
+            file="$DIAGRAMS_DIR/$diagram"
+
+            if [[ ! -s "$file" ]]; then
+              echo "::error::Diagram absent ou vide : $file"
+              exit 1
+            fi
+
+            echo "OK : $file"
+          done
+
+      - name: Regenerate Mermaid diagrams
+        id: export_diagrams
+        run: |
+          set -Eeuo pipefail
+
+          output_dir="$(mktemp -d "$RUNNER_TEMP/structurizr-XXXXXX")"
+          trap 'rm -rf "$output_dir"' EXIT
+
+          diagrams=(
+            structurizr-C1-System-Context.mmd
+            structurizr-C2-Containers.mmd
+            structurizr-Deployment-DEV.mmd
+            structurizr-Deployment-STAGING.mmd
+            structurizr-Deployment-PROD.mmd
+          )
+
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD/$WORKSPACE_DIR:/usr/local/structurizr:ro" \
+            -v "$output_dir:/output" \
+            "$STRUCTURIZR_IMAGE" \
+            export \
+            -workspace /usr/local/structurizr/workspace.dsl \
+            -format mermaid \
+            -output /output
+
+          echo "Export Mermaid terminé."
+
+          for diagram in "${diagrams[@]}"; do
+            generated="$output_dir/$diagram"
+            versioned="$DIAGRAMS_DIR/$diagram"
+
+            if [[ ! -s "$generated" ]]; then
+              echo "::error::Export Structurizr manquant ou vide : $diagram"
+              exit 1
+            fi
+
+            if [[ ! -s "$versioned" ]]; then
+              echo "::error::Diagramme versionné manquant ou vide : $diagram"
+              exit 1
+            fi
+
+            # Structurizr ne termine pas ses exports par un LF.
+            if [[ -n "$(tail -c 1 "$generated")" ]]; then
+              printf '\n' >> "$generated"
+            fi
+
+            if ! cmp -s "$versioned" "$generated"; then
+              echo "::error::Dérive détectée dans le diagramme : $diagram"
+              diff -u "$versioned" "$generated" || true
+              echo "Régénérer les diagrammes localement et committer les changements."
+              exit 1
+            fi
+
+            echo "OK — $diagram"
+          done
+
+          echo "Les cinq diagrammes versionnés sont synchronisés avec le DSL."
+
+      - name: Generate validation report
+        if: always()
+        env:
+          CHECKOUT_STATUS: ${{ steps.checkout.outcome }}
+          VERSION_STATUS: ${{ steps.version.outcome }}
+          DSL_STATUS: ${{ steps.validate_dsl.outcome }}
+          DIAGRAMS_STATUS: ${{ steps.check_diagrams.outcome }}
+          EXPORT_STATUS: ${{ steps.export_diagrams.outcome }}
+        run: |
+          set -Eeuo pipefail
+
+          {
+            echo "# Structurizr Validation Report"
+            echo
+            echo "**Commit:** \`${GITHUB_SHA}\`"
+            echo
+            echo "**Branch:** \`${GITHUB_REF_NAME}\`"
+            echo
+            echo "**Event:** \`${GITHUB_EVENT_NAME}\`"
+            echo
+            echo "## Résultats"
+            echo
+            echo "| Contrôle | Résultat |"
+            echo "|---|---|"
+
+            print_status() {
+              case "$2" in
+                success)
+                  echo "| $1 | ✅ Réussi |"
+                  ;;
+                failure)
+                  echo "| $1 | ❌ Échec |"
+                  ;;
+                cancelled)
+                  echo "| $1 | ⚪ Annulé |"
+                  ;;
+                skipped)
+                  echo "| $1 | ⏭️ Ignoré |"
+                  ;;
+                *)
+                  echo "| $1 | ⚠️ $2 |"
+                  ;;
+              esac
+            }
+
+            print_status "Checkout" "$CHECKOUT_STATUS"
+            print_status "Image Structurizr" "$VERSION_STATUS"
+            print_status "Validation DSL" "$DSL_STATUS"
+            print_status "Présence des diagrammes" "$DIAGRAMS_STATUS"
+            print_status "Export Mermaid et détection de dérive" "$EXPORT_STATUS"
+
+            echo
+            echo "## Environnement"
+            echo
+            echo "- Runner : ubuntu-24.04"
+            echo "- Structurizr : 2026.10.26"
+            echo "- Format : Mermaid"
+            echo
+            echo "## Sécurité"
+            echo
+            echo "- Permissions GitHub : contents: read"
+            echo "- Aucun accès Kubernetes."
+            echo "- Aucun déploiement."
+            echo "- Aucune modification des fichiers du dépôt."
+          } >> "$GITHUB_STEP_SUMMARY"
