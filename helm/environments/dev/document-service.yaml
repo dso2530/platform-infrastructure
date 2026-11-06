@@ -1,128 +1,128 @@
-  nameOverride: document-service
-  fullnameOverride: document-service
+nameOverride: document-service
+fullnameOverride: document-service
 
-  replicaCount: 1
+replicaCount: 1
 
-  image:
-    repository: demo.goharbor.io/ai-public-benefits/document-service
-    tag: "sha-d68e470"
-    pullPolicy: IfNotPresent
+image:
+  repository: demo.goharbor.io/ai-public-benefits/document-service
+  tag: "sha-d68e470"
+  pullPolicy: IfNotPresent
 
-  imagePullSecrets:
-    - name: harbor-registry
-  container:
-    port: 8085
-    portName: http
+imagePullSecrets:
+  - name: harbor-registry
+container:
+  port: 8085
+  portName: http
 
-  service:
-    port: 8085
+service:
+  port: 8085
 
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 
-  env:
-    - name: SPRING_PROFILES_ACTIVE
-      value: kubernetes
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: kubernetes
 
-    - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-      value: "health,info,prometheus"
+  - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+    value: "health,info,prometheus"
 
-    - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
-      value: "true"
+  - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+    value: "true"
 
-    - name: DB_URL
-      value: jdbc:postgresql://192.168.1.40:5432/documentdb
+  - name: DB_URL
+    value: jdbc:postgresql://192.168.1.40:5432/documentdb
 
-    - name: MESSAGING_KAFKA_BOOTSTRAP_SERVERS
-      value: 192.168.1.40:9092
+  - name: MESSAGING_KAFKA_BOOTSTRAP_SERVERS
+    value: 192.168.1.40:9092
 
-    - name: MESSAGING_KAFKA_SCHEMA_REGISTRY_URL
-      value: http://192.168.1.40:8091/apis/ccompat/v7
+  - name: MESSAGING_KAFKA_SCHEMA_REGISTRY_URL
+    value: http://192.168.1.40:8091/apis/ccompat/v7
 
-    - name: STORAGE_ENDPOINT
-      value: http://192.168.1.40:9000
+  - name: STORAGE_ENDPOINT
+    value: http://192.168.1.40:9000
 
-    - name: STORAGE_BUCKET_QUARANTINE
-      value: documents-user-quarantine
+  - name: STORAGE_BUCKET_QUARANTINE
+    value: documents-user-quarantine
 
-    - name: STORAGE_BUCKET_DOCUMENTS
-      value: documents-user
+  - name: STORAGE_BUCKET_DOCUMENTS
+    value: documents-user
 
-    - name: REDIS_HOST
-      value: "192.168.1.40"
+  - name: REDIS_HOST
+    value: "192.168.1.40"
 
-    - name: REDIS_PORT
-      value: "6379"
+  - name: REDIS_PORT
+    value: "6379"
 
-    - name: JAVA_TOOL_OPTIONS
-      value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
 
-  probes:
-    startup:
-      enabled: true
-      path: /actuator/health/liveness
-      port: http
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 2
-      failureThreshold: 30
-      successThreshold: 1
-
-    liveness:
-      enabled: true
-      path: /actuator/health/liveness
-      port: http
-      initialDelaySeconds: 20
-      periodSeconds: 10
-      timeoutSeconds: 2
-      failureThreshold: 3
-      successThreshold: 1
-
-    readiness:
-      enabled: true
-      path: /actuator/health/readiness
-      port: http
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 2
-      failureThreshold: 3
-      successThreshold: 1
-
-  externalSecrets:
+probes:
+  startup:
     enabled: true
-    refreshInterval: 1h
+    path: /actuator/health/liveness
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
+    successThreshold: 1
 
-    secretStoreRef:
-      name: vault
-      kind: ClusterSecretStore
+  liveness:
+    enabled: true
+    path: /actuator/health/liveness
+    port: http
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
 
-    target:
-      name: document-service-secrets
-      creationPolicy: Owner
-      deletionPolicy: Retain
+  readiness:
+    enabled: true
+    path: /actuator/health/readiness
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
 
-    data:
-    - secretKey: STORAGE_ACCESS_KEY
-      remoteKey: ai-public-benefits/document-service
-      property: STORAGE_ACCESS_KEY
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
 
-    - secretKey: STORAGE_SECRET_KEY
-      remoteKey: ai-public-benefits/document-service
-      property: STORAGE_SECRET_KEY
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore
 
-    - secretKey: JWT_SECRET
-      remoteKey: ai-public-benefits/document-service
-      property: JWT_SECRET
+  target:
+    name: document-service-secrets
+    creationPolicy: Owner
+    deletionPolicy: Retain
 
-    - secretKey: DB_USERNAME
-      remoteKey: ai-public-benefits/document-service
-      property: DB_USERNAME
+  data:
+  - secretKey: STORAGE_ACCESS_KEY
+    remoteKey: ai-public-benefits/document-service
+    property: STORAGE_ACCESS_KEY
 
-    - secretKey: DB_PASSWORD
-      remoteKey: ai-public-benefits/document-service
-      property: DB_PASSWORD
+  - secretKey: STORAGE_SECRET_KEY
+    remoteKey: ai-public-benefits/document-service
+    property: STORAGE_SECRET_KEY
+
+  - secretKey: JWT_SECRET
+    remoteKey: ai-public-benefits/document-service
+    property: JWT_SECRET
+
+  - secretKey: DB_USERNAME
+    remoteKey: ai-public-benefits/document-service
+    property: DB_USERNAME
+
+  - secretKey: DB_PASSWORD
+    remoteKey: ai-public-benefits/document-service
+    property: DB_PASSWORD
