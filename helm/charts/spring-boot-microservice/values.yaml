@@ -1,0 +1,172 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+automountServiceAccountToken: false
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+container:
+  port: 8080
+  portName: http
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+# Non-secret environment variables.
+env: []
+# Example:
+# env:
+#   - name: SPRING_PROFILES_ACTIVE
+#     value: kubernetes
+
+# Reference existing Kubernetes Secrets/ConfigMaps.
+envFrom: []
+
+configMap:
+  enabled: false
+  data: {}
+
+existingSecret: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  startup:
+    enabled: true
+    path: /actuator/health
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
+    successThreshold: 1
+  liveness:
+    enabled: true
+    path: /actuator/health/liveness
+    port: http
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
+  readiness:
+    enabled: true
+    path: /actuator/health/readiness
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
+
+terminationGracePeriodSeconds: 40
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAntiAffinity:
+  enabled: false
+
+# Spring Boot/Kafka services can expose a graceful shutdown endpoint through the JVM.
+lifecycle:
+  preStop:
+    enabled: false
+    command: ["/bin/sh", "-c", "sleep 10"]
+
+# Optional HTTP ingress. Prefer the BFF as the externally exposed application.
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+
+# Horizontal Pod Autoscaler.
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /actuator/prometheus
+  labels: {}
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+extraContainers: []
+
+# External Secrets Operator
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+
+  target:
+    name: ""
+    creationPolicy: Owner
+    deletionPolicy: Retain
+
+  data: []

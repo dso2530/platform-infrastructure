@@ -1,0 +1,256 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ include "microservice.fullname" . }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+
+  selector:
+    matchLabels:
+      {{- include "microservice.selectorLabels" . | nindent 6 }}
+
+  template:
+
+    metadata:
+
+      labels:
+
+        {{- include "microservice.selectorLabels" . | nindent 8 }}
+
+        {{- with .Values.podLabels }}
+
+        {{- toYaml . | nindent 8 }}
+
+        {{- end }}
+
+      {{- with .Values.podAnnotations }}
+
+      annotations:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+
+    spec:
+
+      serviceAccountName: {{ include "microservice.serviceAccountName" . }}
+
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+
+      securityContext:
+
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+
+      {{- with .Values.imagePullSecrets }}
+
+      imagePullSecrets:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+
+      containers:
+
+        - name: {{ include "microservice.name" . }}
+
+          image: "{{ required "image.repository is required" .Values.image.repository }}:{{ required "image.tag is required" .Values.image.tag }}"
+
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          securityContext:
+
+            {{- toYaml .Values.securityContext | nindent 12 }}
+
+          ports:
+
+            - name: {{ .Values.container.portName }}
+
+              containerPort: {{ .Values.container.port }}
+
+              protocol: TCP
+
+          {{- with .Values.env }}
+
+          env:
+
+            {{- toYaml . | nindent 12 }}
+
+          {{- end }}
+
+          {{- if or .Values.envFrom .Values.configMap.enabled .Values.existingSecret .Values.externalSecrets.enabled }}
+
+          envFrom:
+
+            {{- if .Values.configMap.enabled }}
+
+            - configMapRef:
+
+                name: {{ include "microservice.fullname" . }}
+
+            {{- end }}
+
+            {{- if .Values.existingSecret }}
+
+            - secretRef:
+
+                name: {{ .Values.existingSecret }}
+
+            {{- end }}
+
+            {{- if .Values.externalSecrets.enabled }}
+
+            - secretRef:
+
+                name: {{ .Values.externalSecrets.target.name }}
+
+            {{- end }}
+
+            {{- with .Values.envFrom }}
+
+            {{- toYaml . | nindent 12 }}
+
+            {{- end }}
+
+          {{- end }}
+
+          {{- if .Values.probes.startup.enabled }}
+
+          startupProbe:
+
+            httpGet:
+
+              path: {{ .Values.probes.startup.path }}
+
+              port: {{ .Values.probes.startup.port }}
+
+            initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+
+            successThreshold: {{ .Values.probes.startup.successThreshold }}
+
+          {{- end }}
+
+          {{- if .Values.probes.liveness.enabled }}
+
+          livenessProbe:
+
+            httpGet:
+
+              path: {{ .Values.probes.liveness.path }}
+
+              port: {{ .Values.probes.liveness.port }}
+
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+
+            successThreshold: {{ .Values.probes.liveness.successThreshold }}
+
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+
+          readinessProbe:
+
+            httpGet:
+
+              path: {{ .Values.probes.readiness.path }}
+
+              port: {{ .Values.probes.readiness.port }}
+
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+
+            successThreshold: {{ .Values.probes.readiness.successThreshold }}
+
+          {{- end }}
+
+          resources:
+
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          {{- if .Values.lifecycle.preStop.enabled }}
+
+          lifecycle:
+
+            preStop:
+
+              exec:
+
+                command:
+
+                  {{- toYaml .Values.lifecycle.preStop.command | nindent 18 }}
+
+          {{- end }}
+
+          {{- with .Values.extraVolumeMounts }}
+
+          volumeMounts:
+
+            {{- toYaml . | nindent 12 }}
+
+          {{- end }}
+
+        {{- with .Values.extraContainers }}
+
+        {{- toYaml . | nindent 8 }}
+
+        {{- end }}
+
+      {{- with .Values.extraVolumes }}
+
+      volumes:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+
+      nodeSelector:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+
+      {{- with .Values.affinity }}
+
+      affinity:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+
+      {{- with .Values.tolerations }}
+
+      tolerations:
+
+        {{- toYaml . | nindent 8 }}
+
+      {{- end }}
+

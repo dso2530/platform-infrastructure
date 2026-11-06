@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "nameOverride": {
+      "type": "string",
+      "maxLength": 63
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "maxLength": 63
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "required": ["port", "portName"],
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "portName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": {
+          "$ref": "#/definitions/resourceValues"
+        },
+        "limits": {
+          "$ref": "#/definitions/resourceValues"
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "properties": {
+        "startup": {
+          "$ref": "#/definitions/probe"
+        },
+        "liveness": {
+          "$ref": "#/definitions/probe"
+        },
+        "readiness": {
+          "$ref": "#/definitions/probe"
+        }
+      }
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "targetMemoryUtilizationPercentage": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "externalSecrets": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "refreshInterval": {
+          "type": "string",
+          "minLength": 1
+        },
+        "secretStoreRef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": ["SecretStore", "ClusterSecretStore"]
+            }
+          }
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "creationPolicy": {
+              "type": "string",
+              "enum": ["Owner", "Orphan", "Merge", "None"]
+            },
+            "deletionPolicy": {
+              "type": "string",
+              "enum": ["Retain", "Delete", "Merge"]
+            }
+          }
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["secretKey", "remoteKey", "property"],
+            "properties": {
+              "secretKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "remoteKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "property": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": ["enabled"]
+          },
+          "then": {
+            "required": ["secretStoreRef", "target", "data"],
+            "properties": {
+              "secretStoreRef": {
+                "required": ["name", "kind"],
+                "properties": {
+                  "name": {
+                    "minLength": 1
+                  }
+                }
+              },
+              "target": {
+                "required": ["name", "creationPolicy", "deletionPolicy"],
+                "properties": {
+                  "name": {
+                    "minLength": 1
+                  }
+                }
+              },
+              "data": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "resourceValues": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "probe": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": ["string", "integer"]
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

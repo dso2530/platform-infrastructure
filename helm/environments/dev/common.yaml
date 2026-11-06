@@ -1,0 +1,34 @@
+image:
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: kubernetes
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+  - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+    value: "health,info,prometheus"
+  - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+    value: "true"
+
+serviceMonitor:
+  enabled: false
