@@ -51,3 +51,5 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *.pyo
+# Helm templates are Kubernetes manifests, not secret values
+!helm/charts/spring-boot-microservice/templates/external-secret.yaml
