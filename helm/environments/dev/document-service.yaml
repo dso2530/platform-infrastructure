@@ -4,10 +4,10 @@
   replicaCount: 1
 
   image:
-    repository: demo.goharbor.io/ai-public-benefits/document-service  
+    repository: demo.goharbor.io/ai-public-benefits/document-service
     tag: "sha-d68e470"
     pullPolicy: IfNotPresent
-    
+
   imagePullSecrets:
     - name: harbor-registry
   container:
@@ -58,10 +58,10 @@
 
     - name: REDIS_PORT
       value: "6379"
-    
+
     - name: JAVA_TOOL_OPTIONS
-      value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError" 
- 
+      value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+
   probes:
     startup:
       enabled: true
