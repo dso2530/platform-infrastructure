@@ -254,15 +254,15 @@ Elle pourra toutefois être réévaluée si certains services deviennent suffisa
 
 | Étape | Action | Statut |
 |---|---|---|
-| 1 | Formaliser la décision architecturale | Accepté |
-| 2 | Créer la structure Helm | À faire |
-| 3 | Développer `spring-boot-microservice` | À faire |
-| 4 | Ajouter les valeurs du service pilote | À faire |
-| 5 | Tester le rendu des manifests | À faire |
-| 6 | Intégrer Kubeconform | À faire |
-| 7 | Ajouter la CI Helm GitHub Actions | À faire |
-| 8 | Valider la CI sur GitHub | À faire |
-| 9 | Intégrer progressivement les Applications ArgoCD | À faire |
+| 1 | Formaliser la décision architecturale | Terminé |
+| 2 | Centraliser la structure Helm | Réalisé |
+| 3 | Développer le chart générique `spring-boot-microservice` | Réalisé pour le pilote |
+| 4 | Ajouter les valeurs du service pilote | Terminé |
+| 5 | Tester et comparer les manifests | Terminé pour le pilote |
+| 6 | Intégrer Kubeconform | À vérifier |
+| 7 | Ajouter la CI Helm GitHub Actions | À vérifier |
+| 8 | Valider la CI sur GitHub | À vérifier |
+| 9 | Migrer progressivement les Applications ArgoCD | En cours |
 
 ## 12. Réexamen de la décision
 
