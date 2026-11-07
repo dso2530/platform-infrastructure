@@ -9,14 +9,16 @@ metadata:
 spec:
   project: developer-content-creator
   sources:
-    - repoURL: https://github.com/dso2530/developer-content-creator.git
-      targetRevision: develop
-      path: deployment/helm/developer-content-creator
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
+      path: helm/charts/spring-boot-microservice
       helm:
+        releaseName: developer-content-creator-repository-service-dev
         valueFiles:
-          - $values/gitops/dev/repository-service/values.yaml
-    - repoURL: https://github.com/dso2530/developer-content-creator.git
-      targetRevision: develop
+          - $values/helm/environments/dev/common.yaml
+          - $values/helm/environments/dev/developer-content-creator/repository-service.yaml
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
