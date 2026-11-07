@@ -1,0 +1,95 @@
+nameOverride: repository-service
+fullnameOverride: developer-content-creator-repository-service
+
+replicaCount: 1
+
+image:
+  repository: "192.168.1.40:30002/developer-content-creator/repository-service"
+  tag: "sha-73c20c4"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: harbor-registry-credentials
+
+serviceAccount:
+  create: true
+  name: developer-content-creator
+
+automountServiceAccountToken: false
+
+container:
+  port: 8080
+  portName: http
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: dev
+
+  - name: SERVER_PORT
+    value: "8080"
+
+  - name: DB_URL
+    value: "jdbc:postgresql://192.168.1.40:5432/dcc_repository"
+
+  - name: DB_USERNAME
+    value: dcc_repository
+
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: repository-service-db
+        key: DB_PASSWORD
+
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+
+  - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+    value: "health,info,prometheus"
+
+  - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+    value: "true"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi
+
+probes:
+  startup:
+    enabled: false
+
+  readiness:
+    enabled: true
+    path: /actuator/health
+    port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+  liveness:
+    enabled: true
+    path: /api/v1/health
+    port: http
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+
+terminationGracePeriodSeconds: 30
