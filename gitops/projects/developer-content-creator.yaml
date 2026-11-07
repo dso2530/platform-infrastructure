@@ -8,6 +8,7 @@ spec:
 
   sourceRepos:
     - https://github.com/dso2530/developer-content-creator.git
+    - https://github.com/dso2530/platform-infrastructure.git
 
   destinations:
     - server: https://kubernetes.default.svc
@@ -20,3 +21,4 @@ spec:
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
+
