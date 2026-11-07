@@ -5,11 +5,15 @@ def resources_by_kind(manifests):
     }
 
 
+# ---------------------------------------------------------------------------
+# Document Service - AI Public Benefits
+# ---------------------------------------------------------------------------
+
 def test_document_service_renders_expected_resources(
-    render_chart,
+    render_document_chart,
     parse_manifests,
 ):
-    result = render_chart()
+    result = render_document_chart()
 
     assert result.returncode == 0, result.stderr
 
@@ -22,16 +26,18 @@ def test_document_service_renders_expected_resources(
 
 
 def test_document_service_uses_configured_image(
-    render_chart,
+    render_document_chart,
     parse_manifests,
 ):
-    result = render_chart()
+    result = render_document_chart()
 
     assert result.returncode == 0, result.stderr
 
     resources = resources_by_kind(parse_manifests(result.stdout))
 
-    containers = resources["Deployment"]["spec"]["template"]["spec"]["containers"]
+    containers = (
+        resources["Deployment"]["spec"]["template"]["spec"]["containers"]
+    )
 
     assert containers[0]["image"] == (
         "demo.goharbor.io/ai-public-benefits/"
@@ -40,16 +46,18 @@ def test_document_service_uses_configured_image(
 
 
 def test_deployment_has_configured_probes(
-    render_chart,
+    render_document_chart,
     parse_manifests,
 ):
-    result = render_chart()
+    result = render_document_chart()
 
     assert result.returncode == 0, result.stderr
 
     resources = resources_by_kind(parse_manifests(result.stdout))
 
-    containers = resources["Deployment"]["spec"]["template"]["spec"]["containers"]
+    containers = (
+        resources["Deployment"]["spec"]["template"]["spec"]["containers"]
+    )
     container = containers[0]
 
     assert "startupProbe" in container
@@ -57,60 +65,11 @@ def test_deployment_has_configured_probes(
     assert "readinessProbe" in container
 
 
-def test_hpa_disabled_keeps_replica_count(
-    render_chart,
-    parse_manifests,
-):
-    result = render_chart()
-
-    assert result.returncode == 0, result.stderr
-
-    resources = resources_by_kind(parse_manifests(result.stdout))
-
-    deployment = resources["Deployment"]
-
-    assert deployment["spec"]["replicas"] == 1
-    assert "HorizontalPodAutoscaler" not in resources
-
-
-def test_hpa_enabled_removes_fixed_replica_count(
-    render_chart,
-    parse_manifests,
-):
-    result = render_chart("--set", "autoscaling.enabled=true")
-
-    assert result.returncode == 0, result.stderr
-
-    resources = resources_by_kind(parse_manifests(result.stdout))
-
-    deployment = resources["Deployment"]
-
-    assert "replicas" not in deployment["spec"]
-    assert "HorizontalPodAutoscaler" in resources
-
-    hpa = resources["HorizontalPodAutoscaler"]
-
-    assert hpa["spec"]["scaleTargetRef"]["name"] == "document-service"
-
-
-def test_external_secrets_disabled(
-    render_chart,
-    parse_manifests,
-):
-    result = render_chart("--set", "externalSecrets.enabled=false")
-
-    assert result.returncode == 0, result.stderr
-
-    resources = resources_by_kind(parse_manifests(result.stdout))
-
-    assert "ExternalSecret" not in resources
-
-
 def test_external_secrets_reference_vault(
-    render_chart,
+    render_document_chart,
     parse_manifests,
 ):
-    result = render_chart()
+    result = render_document_chart()
 
     assert result.returncode == 0, result.stderr
 
@@ -135,6 +94,62 @@ def test_external_secrets_reference_vault(
     assert "STORAGE_ACCESS_KEY" in secret_keys
     assert "STORAGE_SECRET_KEY" in secret_keys
     assert "JWT_SECRET" in secret_keys
+
+
+# ---------------------------------------------------------------------------
+# Generic chart tests - AI Public Benefits + Developer Content Creator
+# ---------------------------------------------------------------------------
+
+def test_hpa_disabled_keeps_replica_count(
+    render_chart,
+    parse_manifests,
+):
+    result = render_chart()
+
+    assert result.returncode == 0, result.stderr
+
+    resources = resources_by_kind(parse_manifests(result.stdout))
+
+    deployment = resources["Deployment"]
+
+    assert deployment["spec"]["replicas"] == 1
+    assert "HorizontalPodAutoscaler" not in resources
+
+
+def test_hpa_enabled_removes_fixed_replica_count(
+    render_chart,
+    parse_manifests,
+    service_config,
+):
+    result = render_chart("--set", "autoscaling.enabled=true")
+
+    assert result.returncode == 0, result.stderr
+
+    resources = resources_by_kind(parse_manifests(result.stdout))
+
+    deployment = resources["Deployment"]
+
+    assert "replicas" not in deployment["spec"]
+    assert "HorizontalPodAutoscaler" in resources
+
+    hpa = resources["HorizontalPodAutoscaler"]
+
+    assert hpa["spec"]["scaleTargetRef"]["name"] == (
+        service_config["fullname"]
+    )
+
+
+def test_external_secrets_disabled(
+    render_chart,
+    parse_manifests,
+):
+    result = render_chart("--set", "externalSecrets.enabled=false")
+
+    assert result.returncode == 0, result.stderr
+
+    resources = resources_by_kind(parse_manifests(result.stdout))
+
+    assert "ExternalSecret" not in resources
 
 
 def test_service_can_be_disabled(
@@ -162,6 +177,10 @@ def test_empty_image_repository_is_rejected(
     assert result.returncode != 0
     assert "image.repository" in result.stderr
 
+
+# ---------------------------------------------------------------------------
+# Pod Anti-Affinity
+# ---------------------------------------------------------------------------
 
 def test_pod_anti_affinity_disabled(
     render_chart,
@@ -197,7 +216,11 @@ def test_pod_anti_affinity_preferred(
 
     anti_affinity = pod_spec["affinity"]["podAntiAffinity"]
 
-    terms = anti_affinity["preferredDuringSchedulingIgnoredDuringExecution"]
+    terms = (
+        anti_affinity[
+            "preferredDuringSchedulingIgnoredDuringExecution"
+        ]
+    )
 
     assert len(terms) == 1
     assert terms[0]["weight"] == 100
@@ -224,7 +247,11 @@ def test_pod_anti_affinity_required(
 
     anti_affinity = pod_spec["affinity"]["podAntiAffinity"]
 
-    terms = anti_affinity["requiredDuringSchedulingIgnoredDuringExecution"]
+    terms = (
+        anti_affinity[
+            "requiredDuringSchedulingIgnoredDuringExecution"
+        ]
+    )
 
     assert len(terms) == 1
     assert (
@@ -245,6 +272,24 @@ def test_pod_anti_affinity_rejects_invalid_weight(
     assert result.returncode != 0
     assert "podAntiAffinity" in result.stderr
 
+
+def test_pod_anti_affinity_rejects_conflicting_configuration(
+    render_chart,
+):
+    result = render_chart(
+        "--set", "podAntiAffinity.enabled=true",
+        "--set",
+        "affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey=kubernetes.io/hostname",
+    )
+
+    assert result.returncode != 0
+    assert "Configure pod anti-affinity either through" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+
 def test_hpa_renders_cpu_and_memory_metrics(
     render_chart,
     parse_manifests,
@@ -263,6 +308,7 @@ def test_hpa_renders_cpu_and_memory_metrics(
     metrics = hpa["spec"]["metrics"]
 
     assert len(metrics) == 2
+
     assert metrics[0]["resource"]["name"] == "cpu"
     assert metrics[0]["resource"]["target"]["averageUtilization"] == 70
 
@@ -304,11 +350,14 @@ def test_hpa_rejects_min_replicas_greater_than_max(
     assert result.returncode != 0
 
     assert (
-        "autoscaling.minReplicas must be less than or equal to autoscaling.maxReplicas"
-        in result.stderr
-    )
+        "autoscaling.minReplicas must be less than or equal to "
+        "autoscaling.maxReplicas"
+    ) in result.stderr
 
-def test_hpa_rejects_missing_cpu_request(render_chart):
+
+def test_hpa_rejects_missing_cpu_request(
+    render_chart,
+):
     result = render_chart(
         "--set", "autoscaling.enabled=true",
         "--set", "autoscaling.minReplicas=2",
@@ -349,13 +398,17 @@ def test_hpa_accepts_missing_memory_request_when_memory_metric_disabled(
     assert result.returncode == 0, result.stderr
 
     resources = resources_by_kind(parse_manifests(result.stdout))
-    hpa = resources["HorizontalPodAutoscaler"]
 
+    hpa = resources["HorizontalPodAutoscaler"]
     metrics = hpa["spec"]["metrics"]
 
     assert len(metrics) == 1
     assert metrics[0]["resource"]["name"] == "cpu"
 
+
+# ---------------------------------------------------------------------------
+# Pod Disruption Budget
+# ---------------------------------------------------------------------------
 
 def test_pdb_disabled_by_default(
     render_chart,
@@ -470,16 +523,9 @@ def test_pdb_rejects_negative_value(
     assert result.returncode != 0
 
 
-def test_pod_anti_affinity_rejects_conflicting_configuration(
-    render_chart,
-):
-    result = render_chart(
-        "--set", "podAntiAffinity.enabled=true",
-        "--set", "affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey=kubernetes.io/hostname",
-    )
-
-    assert result.returncode != 0
-    assert "Configure pod anti-affinity either through" in result.stderr
+# ---------------------------------------------------------------------------
+# Network Policy
+# ---------------------------------------------------------------------------
 
 def test_network_policy_disabled_by_default(
     render_chart,
@@ -492,6 +538,7 @@ def test_network_policy_disabled_by_default(
     resources = resources_by_kind(parse_manifests(result.stdout))
 
     assert "NetworkPolicy" not in resources
+
 
 def test_network_policy_enabled_without_rules_blocks_both_directions(
     render_chart,
@@ -509,6 +556,7 @@ def test_network_policy_enabled_without_rules_blocks_both_directions(
     assert policy["spec"]["policyTypes"] == ["Ingress", "Egress"]
     assert "ingress" not in policy["spec"]
     assert "egress" not in policy["spec"]
+
 
 def test_network_policy_renders_ingress_rule(
     render_chart,

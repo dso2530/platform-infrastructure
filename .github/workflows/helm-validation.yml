@@ -6,22 +6,26 @@ on:
       - main
     paths:
       - "helm/**"
+      - ".kubeconform/**"
       - "tests/helm/**"
       - "scripts/helm/**"
       - "requirements.txt"
       - "requirements-dev.txt"
       - ".github/workflows/helm-validation.yml"
+      - ".github/workflows/helm-document-service-validation.yml"
 
   pull_request:
     branches:
       - main
     paths:
       - "helm/**"
+      - ".kubeconform/**"
       - "tests/helm/**"
       - "scripts/helm/**"
       - "requirements.txt"
       - "requirements-dev.txt"
       - ".github/workflows/helm-validation.yml"
+      - ".github/workflows/helm-document-service-validation.yml"
 
   workflow_dispatch:
 
@@ -35,12 +39,14 @@ concurrency:
 jobs:
   validate:
     name: Validate Helm charts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -54,6 +60,18 @@ jobs:
         with:
           version: v3.20.0
 
+      - name: Install Kubeconform
+        env:
+          KUBECONFORM_VERSION: v0.8.0
+        run: |
+          curl -fsSLo /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+
+          sudo tar -xzf /tmp/kubeconform.tar.gz \
+            -C /usr/local/bin kubeconform
+
+          kubeconform -v
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
@@ -63,13 +81,18 @@ jobs:
         run: |
           python --version
           helm version --short
+          kubeconform -v
           python -m pytest --version
 
-      - name: Validate chart structure
+      - name: Validate Helm microservices
         run: |
-          helm lint helm/charts/spring-boot-microservice \
-            -f helm/environments/dev/common.yaml \
-            -f helm/environments/dev/document-service.yaml
+          bash scripts/helm/validate-microservices-chart.sh
+
+      - name: Check pull request diff
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --check \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
 
       - name: Run Helm tests
         run: |
