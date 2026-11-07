@@ -19,7 +19,7 @@ spec:
         releaseName: document-service
         valueFiles:
           - $values/helm/environments/dev/common.yaml
-          - $values/helm/environments/dev/document-service.yaml
+          - $values/helm/environments/dev/ai-public-benefits/document-service.yaml
 
     # Source secondaire : fichiers de valeurs Helm
     - repoURL: https://github.com/dso2530/platform-infrastructure.git

@@ -72,12 +72,12 @@ platform-infrastructure/
 │   │   └── infrastructure-service/
 │   │
 │   └── environments/
-│       ├── dev/
-│       │   ├── document-service.yaml
-│       │   ├── security-service.yaml
-│       │   └── citizen-bff.yaml
-│       ├── staging/
-│       └── prod/
+│       └── dev/
+│           ├── common.yaml
+│           ├── ai-public-benefits/
+│           │   └── document-service.yaml
+│           └── developer-content-creator/
+│               └── repository-service.yaml
 │
 ├── scripts/
 │   └── helm/
@@ -90,7 +90,7 @@ platform-infrastructure/
         └── helm-validation.yml
 ```
 
-Cette structure constitue une cible d'organisation. Les charts et fichiers seront introduits progressivement, après validation du chart pilote.
+Cette structure constitue une cible d'organisation. Les charts et les fichiers de valeurs sont introduits progressivement, après validation du chart pilote.
 
 ## 5. Principes de conception
 
@@ -129,7 +129,7 @@ Les différences entre environnements seront exprimées dans des fichiers de val
 Exemple :
 
 ```yaml
-# helm/environments/dev/document-service.yaml
+# helm/environments/dev/ai-public-benefits/document-service.yaml
 
 replicaCount: 1
 
@@ -151,6 +151,8 @@ autoscaling:
 
 Les valeurs de staging et de production pourront définir des ressources, un nombre de réplicas et des paramètres de sécurité différents.
 
+Les Applications ArgoCD référenceront d'abord le fichier `common.yaml`, puis le fichier spécifique au microservice. Helm appliquera les valeurs dans l'ordre indiqué : les valeurs spécifiques au service pourront donc remplacer les valeurs communes.
+
 Aucun secret ou identifiant sensible ne devra être stocké en clair dans ces fichiers.
 
 ### 5.4. Gestion des versions
@@ -167,22 +169,33 @@ Le champ `appVersion` représentera la version de l'application, sans être néc
 
 ## 6. Intégration ArgoCD
 
-ArgoCD utilisera le dépôt `platform-infrastructure` comme source Git.
+ArgoCD référence le chart Helm depuis son chemin Git dans le dépôt `platform-infrastructure`.
 
-La première approche consistera à référencer le chart depuis son chemin Git :
+L'intégration repose sur le mécanisme multi-source d'ArgoCD :
 
 ```yaml
 spec:
-  source:
-    repoURL: https://github.com/dso2530/platform-infrastructure.git
-    targetRevision: main
-    path: helm/charts/spring-boot-microservice
-    helm:
-      valueFiles:
-        - ../../environments/dev/document-service.yaml
+  sources:
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
+      path: helm/charts/spring-boot-microservice
+      helm:
+        releaseName: document-service
+        valueFiles:
+          - $values/helm/environments/dev/common.yaml
+          - $values/helm/environments/dev/ai-public-benefits/document-service.yaml
+
+    - repoURL: https://github.com/dso2530/platform-infrastructure.git
+      targetRevision: main
+      ref: values
 ```
 
-Cette configuration est indicative : le chemin relatif des fichiers de valeurs devra être vérifié avec le mécanisme de résolution Helm et la version d'ArgoCD utilisée.
+Cette configuration utilise deux sources Git :
+
+- La première source référence le chart Helm `spring-boot-microservice` et définit le nom de release Helm.
+- La seconde source, identifiée par `ref: values`, permet de référencer les fichiers de valeurs depuis la racine du dépôt avec le préfixe `$values`.
+
+Cette approche permet de centraliser les charts et leurs configurations sans les dupliquer dans les dépôts applicatifs.
 
 Une évolution vers des charts Helm publiés dans un dépôt OCI pourra être étudiée ultérieurement.
 
@@ -202,9 +215,9 @@ Elle devra exécuter les contrôles suivants :
 | Tests spécifiques | pytest |
 | Analyse de configuration | Checkov, selon le périmètre retenu |
 
-La CI sera exécutée sur les Pull Requests, les pushs sur `main` et manuellement.
+La CI sera exécutée sur les Pull Requests, les pushs sur `main` et à la demande.
 
-### Limites de sécurité
+### 7.1. Limites de sécurité
 
 La CI Helm sera exclusivement une chaîne de validation.
 
@@ -217,7 +230,7 @@ Elle ne devra :
 - Effectuer aucun déploiement ;
 - Modifier aucune infrastructure externe.
 
-Le déploiement restera une responsabilité distincte du processus de validation.
+Le déploiement restera une responsabilité distincte du processus de validation, assurée par ArgoCD selon la politique GitOps définie.
 
 ## 8. Conséquences positives
 
@@ -273,4 +286,6 @@ Cette décision pourra être réévaluée si :
 - Une stratégie de publication OCI devient nécessaire ;
 - Les contraintes de gouvernance imposent une séparation des dépôts.
 
-**Décision finale : centralisation des charts Helm génériques et de leurs configurations d'environnement dans `platform-infrastructure`, avec validation CI indépendante et absence de déploiement automatique.**
+---
+
+**Décision finale :** centralisation des charts Helm génériques et de leurs configurations d'environnement dans `platform-infrastructure`, avec validation CI indépendante et absence de déploiement automatique.
