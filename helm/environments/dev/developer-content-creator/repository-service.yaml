@@ -64,24 +64,31 @@ resources:
 
 probes:
   startup:
-    enabled: false
+    enabled: true
+    path: /actuator/health/liveness
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
+    successThreshold: 1
 
   readiness:
     enabled: true
-    path: /actuator/health
+    path: /actuator/health/readiness
     port: http
-    initialDelaySeconds: 30
-    periodSeconds: 10
+    initialDelaySeconds: 15
+    periodSeconds: 5
     timeoutSeconds: 3
     failureThreshold: 3
     successThreshold: 1
 
   liveness:
     enabled: true
-    path: /api/v1/health
+    path: /actuator/health/liveness
     port: http
     initialDelaySeconds: 30
-    periodSeconds: 20
+    periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
     successThreshold: 1
